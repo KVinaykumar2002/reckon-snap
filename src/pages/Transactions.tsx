@@ -1,32 +1,36 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Search, Filter, Download, Eye } from "lucide-react";
+import { Search, Filter, Download, Eye, RefreshCw, AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-
-// Mock transaction data
-const mockTransactions = [
-  { id: 1, description: "Grocery Shopping", category: "Food & Dining", amount: -85.50, date: "2024-01-15", type: "expense" },
-  { id: 2, description: "Freelance Payment", category: "Income", amount: 1200.00, date: "2024-01-14", type: "income" },
-  { id: 3, description: "Gas Station", category: "Transportation", amount: -45.20, date: "2024-01-13", type: "expense" },
-  { id: 4, description: "Netflix Subscription", category: "Entertainment", amount: -15.99, date: "2024-01-12", type: "expense" },
-  { id: 5, description: "Salary", category: "Income", amount: 4500.00, date: "2024-01-01", type: "income" },
-  { id: 6, description: "Coffee Shop", category: "Food & Dining", amount: -4.50, date: "2024-01-11", type: "expense" },
-  { id: 7, description: "Electric Bill", category: "Bills & Utilities", amount: -120.00, date: "2024-01-10", type: "expense" },
-  { id: 8, description: "Investment Dividend", category: "Investment", amount: 250.00, date: "2024-01-09", type: "income" },
-];
+import { transactionApi, Transaction } from "@/services/api";
 
 export default function Transactions() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
 
-  const filteredTransactions = mockTransactions.filter((transaction) => {
+  // Fetch transactions from server
+  const { 
+    data: transactions = [], 
+    isLoading, 
+    error, 
+    refetch 
+  } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: transactionApi.getTransactions,
+    refetchOnWindowFocus: false,
+  });
+
+  // Filter transactions based on search and filters
+  const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === "all" || transaction.type === filterType;
@@ -35,7 +39,7 @@ export default function Transactions() {
     return matchesSearch && matchesType && matchesCategory;
   });
 
-  const categories = [...new Set(mockTransactions.map(t => t.category))];
+  const categories = [...new Set(transactions.map(t => t.category))];
 
   return (
     <div className="space-y-6">
@@ -46,10 +50,21 @@ export default function Transactions() {
             View and manage your financial transactions
           </p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => refetch()}
+            disabled={isLoading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+            Refresh
+          </Button>
+          <Button className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -114,24 +129,46 @@ export default function Transactions() {
         </CardContent>
       </Card>
 
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load transactions. Please check your connection and try again.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Transactions List */}
       <Card>
         <CardHeader>
           <CardTitle>Transaction History</CardTitle>
           <CardDescription>
-            {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''} found
+            {isLoading ? (
+              "Loading transactions..."
+            ) : (
+              `${filteredTransactions.length} transaction${filteredTransactions.length !== 1 ? 's' : ''} found`
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {filteredTransactions.length === 0 ? (
+            {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
-                No transactions found matching your criteria.
+                <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                Loading transactions...
+              </div>
+            ) : filteredTransactions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {transactions.length === 0 
+                  ? "No transactions found. Add your first transaction to get started!"
+                  : "No transactions found matching your criteria."
+                }
               </div>
             ) : (
               filteredTransactions.map((transaction) => (
                 <div
-                  key={transaction.id}
+                  key={transaction._id}
                   className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex-1">

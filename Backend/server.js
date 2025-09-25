@@ -8,7 +8,7 @@ const port = 3001;
 app.use(express.json());
 
 app.use(cors({
-  origin: ["http://localhost:8080", "http://localhost:8081", "http://localhost:8082", "http://localhost:8083"],  // frontend URLs
+  origin: ["http://localhost:8080", "http://localhost:8081", "http://localhost:8082", "http://localhost:8083", "http://localhost:5173"],  // frontend URLs
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
@@ -60,8 +60,7 @@ const Transaction = mongoose.model('Transaction', transactionSchema);
 app.get('/api/transactions', async (req, res) => {
     try {
         const transactions = await Transaction.find()
-            .sort({ date: -1 })
-            .limit(10); // Get last 10 transactions
+            .sort({ date: -1 }); // Get last 10 transactions
         res.json(transactions);
     } catch (error) {
         res.status(500).json({ error: 'Error fetching transactions' });
