@@ -47,13 +47,39 @@ export function TransactionForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: "Transaction Added",
-      description: `${values.type === "income" ? "Income" : "Expense"} of $${values.amount} has been recorded.`,
-    });
-    form.reset();
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      // Convert amount to number as backend expects
+      const transactionData = {
+        ...values,
+        amount: parseFloat(values.amount)
+      };
+
+      const response = await fetch('http://localhost:3001/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transactionData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Failed to add transaction');
+      }
+
+      toast({
+        title: "Transaction Added",
+        description: `${values.type === "income" ? "Income" : "Expense"} of $${values.amount} has been recorded.`,
+      });
+      form.reset();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add transaction. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
   const categories = transactionType === "income" ? incomeCategories : expenseCategories;
@@ -206,7 +232,7 @@ export function TransactionForm() {
                     />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
+                  </FormItem>
               )}
             />
 

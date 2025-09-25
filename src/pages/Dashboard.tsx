@@ -1,64 +1,74 @@
+import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, DollarSign, PieChart } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell } from "recharts";
-
-// Mock data for demonstration
-const monthlyData = [
-  { month: "Jan", income: 4500, expenses: 3200 },
-  { month: "Feb", income: 4200, expenses: 3100 },
-  { month: "Mar", income: 4800, expenses: 3400 },
-  { month: "Apr", income: 4600, expenses: 3300 },
-  { month: "May", income: 5000, expenses: 3600 },
-  { month: "Jun", income: 4900, expenses: 3500 }
-];
-
-const categoryData = [
-  { name: "Food & Dining", value: 800, color: "#ef4444" },
-  { name: "Transportation", value: 600, color: "#f97316" },
-  { name: "Shopping", value: 500, color: "#eab308" },
-  { name: "Bills & Utilities", value: 700, color: "#22c55e" },
-  { name: "Entertainment", value: 300, color: "#3b82f6" },
-  { name: "Healthcare", value: 200, color: "#8b5cf6" }
-];
-
-const recentTransactions = [
-  { id: 1, description: "Grocery Shopping", category: "Food & Dining", amount: -85.50, date: "2024-01-15", type: "expense" },
-  { id: 2, description: "Freelance Payment", category: "Income", amount: 1200.00, date: "2024-01-14", type: "income" },
-  { id: 3, description: "Gas Station", category: "Transportation", amount: -45.20, date: "2024-01-13", type: "expense" },
-  { id: 4, description: "Netflix Subscription", category: "Entertainment", amount: -15.99, date: "2024-01-12", type: "expense" },
-  { id: 5, description: "Salary", category: "Income", amount: 4500.00, date: "2024-01-01", type: "income" }
-];
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 
 export default function Dashboard() {
+  const [monthlyData, setMonthlyData] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [stats, setStats] = useState({
+    totalBalance: "0.00",
+    monthlyIncome: "0.00",
+    monthlyExpenses: "0.00",
+    savingsRate: "0.0"
+  });
+
+  useEffect(() => {
+    // Fetch monthly overview
+    fetch('http://localhost:3001/api/monthly-overview')
+      .then(res => res.json())
+      .then(data => setMonthlyData(data))
+      .catch(err => console.error('Error fetching monthly data:', err));
+
+    // Fetch category breakdown
+    fetch('http://localhost:3001/api/category-breakdown')
+      .then(res => res.json())
+      .then(data => setCategoryData(data))
+      .catch(err => console.error('Error fetching category data:', err));
+
+    // Fetch recent transactions
+    fetch('http://localhost:3001/api/transactions')
+      .then(res => res.json())
+      .then(data => setRecentTransactions(data))
+      .catch(err => console.error('Error fetching transactions:', err));
+
+    // Fetch stats
+    fetch('http://localhost:3001/api/stats')
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(err => console.error('Error fetching stats:', err));
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard
           title="Total Balance"
-          value="$12,458.32"
+          value={`$${stats.totalBalance}`}
           change="+12.5%"
           icon={DollarSign}
           variant="default"
         />
         <StatCard
           title="Monthly Income"
-          value="$4,900.00"
+          value={`$${stats.monthlyIncome}`}
           change="+8.2%"
           icon={TrendingUp}
           variant="income"
         />
         <StatCard
           title="Monthly Expenses"
-          value="$3,500.00"
+          value={`$${stats.monthlyExpenses}`}
           change="-2.4%"
           icon={TrendingDown}
           variant="expense"
         />
         <StatCard
           title="Savings Rate"
-          value="28.6%"
+          value={`${stats.savingsRate}%`}
           change="+5.1%"
           icon={PieChart}
           variant="default"
@@ -100,12 +110,20 @@ export default function Dashboard() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <RechartsPieChart>
-                <Tooltip />
-                <RechartsPieChart data={categoryData}>
+                <Pie
+                  data={categoryData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  label
+                >
                   {categoryData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-                </RechartsPieChart>
+                </Pie>
+                <Tooltip />
               </RechartsPieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -123,17 +141,17 @@ export default function Dashboard() {
         <CardContent>
           <div className="space-y-4">
             {recentTransactions.map((transaction) => (
-              <div key={transaction.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+              <div key={transaction._id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
                 <div className="flex-1">
                   <p className="font-medium">{transaction.description}</p>
                   <p className="text-sm text-muted-foreground">
-                    {transaction.category} • {transaction.date}
+                    {transaction.category} • {new Date(transaction.date).toLocaleDateString()}
                   </p>
                 </div>
                 <div className={`font-semibold ${
                   transaction.type === "income" ? "text-income" : "text-expense"
                 }`}>
-                  {transaction.type === "income" ? "+" : ""}${Math.abs(transaction.amount).toFixed(2)}
+                  {transaction.type === "income" ? "+" : ""}${transaction.amount.toFixed(2)}
                 </div>
               </div>
             ))}
