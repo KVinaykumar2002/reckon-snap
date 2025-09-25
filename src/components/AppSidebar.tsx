@@ -22,7 +22,7 @@ const navigation = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Add Transaction", url: "/add", icon: PlusCircle },
   { title: "Transactions", url: "/transactions", icon: List },
-  { title: "Upload Receipt", url: "/upload", icon: Receipt },
+  { title: "Upload Excel", url: "/upload", icon: Receipt },
 ];
 
 export function AppSidebar() {
@@ -42,7 +42,6 @@ export function AppSidebar() {
         <div className="px-4 pb-6">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-white" />
             </div>
             {state === "expanded" && (
               <div>
