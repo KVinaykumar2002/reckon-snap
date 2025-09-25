@@ -165,45 +165,43 @@ export default function ReceiptUpload() {
     if (!processedData || processedData.success.length === 0) return;
 
     setIsUploading(true);
-    let successCount = 0;
-    let errorCount = 0;
 
     try {
-      for (const transaction of processedData.success) {
-        try {
-          const response = await fetch('http://localhost:3001/api/transactions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              ...transaction,
-              date: new Date(transaction.date).toISOString()
-            }),
-          });
+      // Prepare transactions for bulk upload
+      const transactionsToUpload = processedData.success.map(transaction => ({
+        ...transaction,
+        date: new Date(transaction.date).toISOString()
+      }));
 
-          if (response.ok) {
-            successCount++;
-          } else {
-            errorCount++;
-          }
-        } catch (error) {
-          errorCount++;
-        }
-      }
-
-      toast({
-        title: "Upload complete",
-        description: `Successfully uploaded ${successCount} transactions. ${errorCount} failed.`,
+      const response = await fetch('http://localhost:3001/api/transactions/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactions: transactionsToUpload
+        }),
       });
 
-      // Clear processed data after successful upload
-      setProcessedData(null);
-      setUploadedFiles([]);
+      if (response.ok) {
+        const result = await response.json();
+        
+        toast({
+          title: "Submit complete",
+          description: `Successfully submitted ${result.successCount} transactions to database. ${result.errorCount} errors occurred.`,
+        });
+
+        // Clear processed data after successful upload
+        setProcessedData(null);
+        setUploadedFiles([]);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Upload failed');
+      }
     } catch (error) {
       toast({
         title: "Upload failed",
-        description: "Failed to upload transactions. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to upload transactions. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -481,12 +479,12 @@ export default function ReceiptUpload() {
                   {isUploading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Uploading...
+                      Submitting...
                     </>
                   ) : (
                     <>
                       <Database className="h-4 w-4 mr-2" />
-                      Upload {processedData.success.length} Transactions
+                      Submit {processedData.success.length} Transactions
                     </>
                   )}
                 </Button>

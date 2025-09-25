@@ -258,3 +258,118 @@ app.post('/api/transactions', async (req, res) => {
         res.status(500).json({ error: 'Error creating transaction' }); // Changed to 500 for non-validation errors
     }
 });
+
+// Bulk add transactions from Excel
+app.post('/api/transactions/bulk', async (req, res) => {
+    try {
+        const { transactions } = req.body;
+
+        console.log('POST /api/transactions/bulk hit with:', transactions.length, 'transactions');
+
+        if (!Array.isArray(transactions) || transactions.length === 0) {
+            return res.status(400).json({ error: 'Transactions array is required and cannot be empty' });
+        }
+
+        const results = {
+            success: [],
+            errors: []
+        };
+
+        // Process each transaction
+        for (let i = 0; i < transactions.length; i++) {
+            const transactionData = transactions[i];
+            
+            try {
+                // Validate required fields
+                if (!transactionData.type || !transactionData.amount || !transactionData.category || !transactionData.date || !transactionData.description) {
+                    results.errors.push({
+                        index: i,
+                        error: 'Missing required fields',
+                        data: transactionData
+                    });
+                    continue;
+                }
+
+                // Validate transaction type
+                if (transactionData.type !== 'income' && transactionData.type !== 'expense') {
+                    results.errors.push({
+                        index: i,
+                        error: 'Invalid type. Must be "income" or "expense"',
+                        data: transactionData
+                    });
+                    continue;
+                }
+
+                // Validate amount
+                const parsedAmount = parseFloat(transactionData.amount);
+                if (isNaN(parsedAmount) || parsedAmount < 0) {
+                    results.errors.push({
+                        index: i,
+                        error: 'Invalid amount. Must be a positive number',
+                        data: transactionData
+                    });
+                    continue;
+                }
+
+                // Validate date
+                const parsedDate = new Date(transactionData.date);
+                if (isNaN(parsedDate.getTime())) {
+                    results.errors.push({
+                        index: i,
+                        error: 'Invalid date format',
+                        data: transactionData
+                    });
+                    continue;
+                }
+
+                // Validate description length
+                if (transactionData.description.length > 200) {
+                    results.errors.push({
+                        index: i,
+                        error: 'Description must not exceed 200 characters',
+                        data: transactionData
+                    });
+                    continue;
+                }
+
+                // Create transaction
+                const transaction = new Transaction({
+                    type: transactionData.type,
+                    amount: parsedAmount,
+                    category: transactionData.category,
+                    date: parsedDate,
+                    description: transactionData.description
+                });
+
+                const savedTransaction = await transaction.save();
+                results.success.push({
+                    index: i,
+                    transaction: savedTransaction
+                });
+
+                console.log(`Transaction ${i + 1} saved successfully:`, savedTransaction._id);
+
+            } catch (error) {
+                console.error(`Error processing transaction ${i + 1}:`, error);
+                results.errors.push({
+                    index: i,
+                    error: error.message || 'Unknown error',
+                    data: transactionData
+                });
+            }
+        }
+
+        console.log(`Bulk upload completed: ${results.success.length} successful, ${results.errors.length} errors`);
+
+        res.status(200).json({
+            message: `Bulk upload completed: ${results.success.length} successful, ${results.errors.length} errors`,
+            successCount: results.success.length,
+            errorCount: results.errors.length,
+            results: results
+        });
+
+    } catch (error) {
+        console.error('Error in POST /api/transactions/bulk:', error);
+        res.status(500).json({ error: 'Error processing bulk transactions' });
+    }
+});
