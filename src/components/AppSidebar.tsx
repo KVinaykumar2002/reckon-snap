@@ -3,11 +3,7 @@ import {
   LayoutDashboard,
   PlusCircle,
   List,
-  BarChart3,
-  Upload,
-  Settings,
   Receipt,
-  TrendingUp,
 } from "lucide-react";
 
 import {
@@ -26,10 +22,7 @@ const navigation = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Add Transaction", url: "/add", icon: PlusCircle },
   { title: "Transactions", url: "/transactions", icon: List },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Upload Receipt", url: "/upload", icon: Receipt },
-  { title: "Import Data", url: "/import", icon: Upload },
-  { title: "Categories", url: "/categories", icon: Settings },
 ];
 
 export function AppSidebar() {
